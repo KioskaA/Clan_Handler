@@ -1,0 +1,97 @@
+Примерная структура проекта:
+
+Clan_Handler/
+
+    backend/
+
+        app/
+            api/ # Эндпоинты REST API
+                ...
+
+            core/
+                ...
+
+            database/ # Работа с базой данных
+                __init__.py
+                base.py
+                session.py
+
+                repositories/
+                    ...
+                
+                models/
+                    ...
+
+            services/
+                coc_api_service/
+                    cocapihandler.py # Взаимодействует с Clash of Clans API(coc.py), получает данные, приводит их в нужный вид для передачи в базу данных
+                                     # (ВРЕМЕННОЕ РЕШЕНИЕ) и сохраняет их в базу данных(tempdatabase/)
+                                     # На текущей стадии база данных находится в папке tempdatabase/ (просто json файлы)
+                                     # Пока не будет готово это ↑, к задачам в ↓ не переходить
+                                     # ??? Должен ли он передавать данные в базу данных или лучше передавать их через другой класс в другом месте(Clan_Handler/backend/app/database/)?
+
+                    data_controllers/
+                        datacollector.py # Получает данные от Clash of Clans API через coc.py и отправляет их в CoCAPIHandler
+                                         # Получает Events(встроенный функционал coc.py), отправляет в CoCAPIHandler
+                        dataparser.py # Получает данные и Events из CoCAPIHandler, преобразует их и отправляет в CoCAPIHandler
+                        datasaver.py # (ВРЕМЕННОЕ РЕШЕНИЕ) Дает способы сохранения преобразованных данных из CoCAPIHandler в tempdatabase
+                    
+                    tempdatabase/ # Временная база данных (json файлы)
+                        clan.json # Подробная информация о клане
+
+                        members.json # Информация о текущих участниках клана
+                        members/ # Не больше 50 файлов
+                            [ник].json # Подробная информация об участнике
+
+                        leftmembers.json # Информация о покинувших клан игроках, даты, причины, роли и т.д.
+                        CWlog.json # История КВ, так же содержит подробную информацию о каждой кв
+                        CWLlog.json # История ЛВК, так же содержит подробную информацию о каждой лвк
+                        currentwar.json # Подробная информация о текущей КВ, ЛВК
+                        currentperiod.json # Подробная информация о текущем периоде
+                        periods.json # Информация о периодах(даты начала, окончания периодов, сколько кв и рейдов отыграли, результаты ЛВК, ИК, изменение циферок по всем параметрам за период)
+                        raidlog.json # История рейдов, так же содержит подробную информацию о каждом рейде
+                        clangames.json # Информация о каждой ИК, сколько очков набрал клан и каждый участник
+                        
+
+                ...
+
+            tasks/
+                ...
+
+            main.py
+
+        tests/
+            ...
+
+        requirements/
+            ...
+
+        .env
+        .gitignore
+
+
+
+
+    frontend/ # В будущем (Приоритетно после backend/, возможна черновая параллельная разработка при необходимости)
+        ...
+
+
+    mobile/ # В будущем
+        ...
+
+
+    pc/ # В будущем
+        window_components/
+            menubar.py
+            sidebar.py
+            statusbar.py
+        tabs_content/
+            ...
+        resources/
+            ...
+        controllers/
+            tab_swich.py
+            ...
+        app.py
+
+    README.md
