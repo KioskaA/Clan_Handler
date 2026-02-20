@@ -1,6 +1,12 @@
-#import pandas as pd
-#import numpy as np
-#import arrow
+import sys
+import os
+from pathlib import Path
+
+project_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(project_root))
+
+
+from config import Config # ! I AM STUCK HELP MEEEEEEEEE PLEEEEEASE
 
 from coc_api_service.events import EventEmitter, ClanDataParsedEvent, ErrorEvent
 
@@ -38,14 +44,16 @@ class DataParser(EventEmitter):
         # TODO CWwarlog, Raidwarlog, CWdata, CWLdata, Playerdata
     def __init__(self):
         super().__init__()
-        print("DataParser.__init__(): успешная инициализация класса")
+        print("----DataParser.__init__(): успешная инициализация класса")
 
     async def parseClan(self, clan):
+        print(f"----DataParser.parseClan(): Запуск парсинга клана")
         try:
             clandata = {}
 
             clandata["tag"] = clan.tag
             clandata["name"] = clan.name
+            clandata["badge"] = await self.badge_handler(clan, save=True)
             clandata["level"] = clan.level
             clandata["type"] = clan.type
             clandata["family_friendly"] = clan.family_friendly
@@ -75,6 +83,7 @@ class DataParser(EventEmitter):
             #clandata["members_dict"] = clan.members_dict
 
             await self.emit("clan_data_parsed", ClanDataParsedEvent(clandata))
+            print(f"----DataParser.parseClan(): данные клана обработаны")
             return clandata
         
         except Exception as e:
@@ -83,3 +92,20 @@ class DataParser(EventEmitter):
             await self.emit("error", ErrorEvent(error_msg))
             return None
 
+    async def badge_handler(self, clan, save=False):
+        try:
+            badge = clan.badge
+            if save:
+                print(f"----DataParser.badge_handler(): Параметр save = True")
+                try:
+                    file_path = str(Config.CLAN_BADGE_PATH)
+                    await badge.save(file_path, size="large")
+                    print("DataParser.badge_handler(): Badge сохранен в tempdatabase")
+                except Exception as e:
+                    print(f"DataParser.badge_handler(): Ошибка при сохранении badge: {e}")
+            return clan.badge.large
+        except Exception as e:
+            error_msg = f"Ошибка при обработке badge: {e}"
+            print(f"DataParser.badge_handler(): {error_msg}")
+            await self.emit("error", ErrorEvent(error_msg))
+            return None
