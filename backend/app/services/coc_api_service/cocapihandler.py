@@ -118,7 +118,7 @@ async def main():
         if printlist:
             printfromList(event.data, "Clan members Data")
 
-    handler.on("clan_members_data_ready", lambda event: on_clan_members_data_ready(event, printlist=False))
+    handler.on("clan_members_data_ready", lambda event: on_clan_members_data_ready(event, printlist=True))
 
     async def on_error(event: ErrorEvent):
         print(f"\n❌ Ошибка: {event.data}")
