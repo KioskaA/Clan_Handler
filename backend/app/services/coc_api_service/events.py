@@ -12,6 +12,12 @@ class ClanDataReceivedEvent(Event):
 class ClanDataParsedEvent(Event):
     pass
 
+class ClanMembersDataReceivedEvent(Event):
+    pass
+
+class ClanMembersDataParsedEvent(Event):
+    pass
+
 class ErrorEvent(Event):
     pass
 

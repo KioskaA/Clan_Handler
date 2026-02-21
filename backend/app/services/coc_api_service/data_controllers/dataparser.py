@@ -1,64 +1,24 @@
-import sys
-import os
-from pathlib import Path
-
-project_root = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(project_root))
-
-
-from config import Config # ! I AM STUCK HELP MEEEEEEEEE PLEEEEEASE
-
-from coc_api_service.events import EventEmitter, ClanDataParsedEvent, ErrorEvent
+from coc_api_service.events import EventEmitter, ClanDataParsedEvent, ClanMembersDataParsedEvent, ErrorEvent
 
 class DataParser(EventEmitter):
-        #tag str # !
-        #name str # !
-        #badge Badge
-        #level int # !
-        #type str(open, inviteOnly or closed) # !
-        #family_friendly bool # !
-        #description str # !
-        #location Location
-        #points int # !
-        #builder_base_points int # !
-        #capital_points int # !
-        #required_trophies int # !
-        #required_builder_base_trophies int # !
-        #required_townhall int # !
-        #war_frequency str(always, etc) # !
-        #war_win_streak int # !
-        #war_wins int # !
-        #war_ties int # !
-        #war_losses int # !
-        #public_war_log bool # !
-        #member_count int # !
-        #label_cls Label
-        #member_cls ClanMember
-        #capital_district_cls CapitalDistrict
-        #war_league BaseLeague
-        #capital_league BaseLeague
-        #capital_districts List[CapitalDistrict]
-        #labels List[Label]
-        #members List[ClanMember]
-        #members_dict Dict[str, ClanMember]
         # TODO CWwarlog, Raidwarlog, CWdata, CWLdata, Playerdata
     def __init__(self):
         super().__init__()
-        print("----DataParser.__init__(): успешная инициализация класса")
+        print("DataParser.__init__(): успешная инициализация класса")
 
     async def parseClan(self, clan):
-        print(f"----DataParser.parseClan(): Запуск парсинга клана")
+        print(f"DataParser.parseClan(): Запуск парсинга клана")
         try:
             clandata = {}
 
             clandata["tag"] = clan.tag
             clandata["name"] = clan.name
-            clandata["badge"] = await self.badge_handler(clan, save=True)
+            clandata["badge"] = clan.badge.large
             clandata["level"] = clan.level
             clandata["type"] = clan.type
             clandata["family_friendly"] = clan.family_friendly
             clandata["description"] = clan.description
-            #clandata["location"] = clan.location
+            clandata["location"] = clan.location.name
             clandata["points"] = clan.points
             clandata["builder_base_points"] = clan.builder_base_points
             clandata["capital_points"] = clan.capital_points
@@ -72,18 +32,14 @@ class DataParser(EventEmitter):
             clandata["war_losses"] = clan.war_losses
             clandata["public_war_log"] = clan.public_war_log
             clandata["member_count"] = clan.member_count
-            #clandata["label_cls"] = clan.label_cls
-            #clandata["member_cls"] = clan.member_cls
-            #clandata["capital_district_cls"] = clan.capital_district_cls
-            #clandata["war_league"] = clan.war_league
-            #clandata["capital_league"] = clan.capital_league
-            #clandata["capital_districts"] = clan.capital_districts
-            #clandata["labels"] = clan.labels
-            #clandata["members"] = clan.members
-            #clandata["members_dict"] = clan.members_dict
+            clandata["labels"] = [(label.name, label.badge.medium) for label in clan.labels]
+            clandata["members"] = [(member.tag) for member in clan.members]
+            clandata["war_league"] = clan.war_league.name
+            clandata["capital_league"] = clan.capital_league.name
+            clandata["capital_districts"] = [(district.name, district.hall_level) for district in clan.capital_districts]
 
             await self.emit("clan_data_parsed", ClanDataParsedEvent(clandata))
-            print(f"----DataParser.parseClan(): данные клана обработаны")
+            print(f"DataParser.parseClan(): данные клана обработаны")
             return clandata
         
         except Exception as e:
@@ -91,21 +47,24 @@ class DataParser(EventEmitter):
             print(f"DataParser.parseClan(): {error_msg}")
             await self.emit("error", ErrorEvent(error_msg))
             return None
-
-    async def badge_handler(self, clan, save=False):
+        
+    async def parseClanMembers(self, memberslist):
+        print(f"DataParser.parseClanMembers(): Запуск парсинга списка участников клана")
         try:
-            badge = clan.badge
-            if save:
-                print(f"----DataParser.badge_handler(): Параметр save = True")
-                try:
-                    file_path = str(Config.CLAN_BADGE_PATH)
-                    await badge.save(file_path, size="large")
-                    print("DataParser.badge_handler(): Badge сохранен в tempdatabase")
-                except Exception as e:
-                    print(f"DataParser.badge_handler(): Ошибка при сохранении badge: {e}")
-            return clan.badge.large
+            members = []
+            async for member in memberslist:
+                members.append({
+                    "tag": member.tag,
+                    "name": member.name,
+                    "role": member.role,
+                    "town_hall": member.town_hall,
+                    "donations": member.donations
+                })
+
+            await self.emit("clan_members_data_parsed", ClanMembersDataParsedEvent(members))
+            print(f"DataParser.parseClanMembers(): список участников клана обработан")
         except Exception as e:
-            error_msg = f"Ошибка при обработке badge: {e}"
-            print(f"DataParser.badge_handler(): {error_msg}")
+            error_msg = f"Ошибка при парсинге данных: {e}"
+            print(f"DataParser.parseClan(): {error_msg}")
             await self.emit("error", ErrorEvent(error_msg))
             return None

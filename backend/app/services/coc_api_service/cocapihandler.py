@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from data_controllers.datacollector import DataCollector
 from data_controllers.dataparser import DataParser
-from coc_api_service.events import EventEmitter, ClanDataReceivedEvent, ClanDataParsedEvent, ErrorEvent
+from coc_api_service.events import EventEmitter, ClanDataReceivedEvent, ClanDataParsedEvent, ClanMembersDataReceivedEvent, ClanMembersDataParsedEvent, ErrorEvent
 
 
 load_dotenv()
@@ -41,6 +41,18 @@ class CoCAPIHandler(EventEmitter):
             await self.emit("clan_data_ready", event)
         
         self.data_parser.on("clan_data_parsed", handle_clan_data_parsed)
+
+        async def handle_clan_members_data_received(event: ClanMembersDataReceivedEvent):
+            print("CoCAPIHandler: Получен список участников клана, начинаю парсинг")
+            await self.data_parser.parseClanMembers(event.data)
+
+        self.data_collector.on("clan_members_data_received", handle_clan_members_data_received)
+
+        async def handle_clan_members_data_parsed(event: ClanMembersDataParsedEvent):
+            print("CoCAPIHandler: Список участников клана распарсен")
+            await self.emit("clan_members_data_ready", event)
+
+        self.data_parser.on("clan_members_data_parsed", handle_clan_members_data_parsed)
         
         async def handle_collector_error(event: ErrorEvent):
             print(f"CoCAPIHandler: Получена ошибка от коллектора: {event.data}")
@@ -63,18 +75,31 @@ class CoCAPIHandler(EventEmitter):
         print("CoCAPIHandler: Запрашиваю данные клана")
         await self.data_collector.getClandata()
 
+    async def fetch_clan_members_data(self):
+        print("CoCAPIHandler: Запрашиваю данные об участниках клана")
+        await self.data_collector.getClanMembersdata(CLANTAG)
+
     async def close(self):
         """Закрытие соединения"""
         await self.data_collector.close()
         print(f"CoCAPIHandler.close(): сессия успешно закрыта")
 
 
-def printfromDict(Dict, name="Dict"):
-    """Вспомогательная функция для печати словаря"""
+def printfromDict(Dict, name="Dict", showname = True):
+    if showname:
+        print(f"\n--- {name} ---")
+        for key, value in Dict.items():
+            print(f"{key}: {value}")
+        print("---" + "-" * len(name) + "---")
+    elif not showname:
+        for key, value in Dict.items():
+            print(f"{key}: {value}")
+
+def printfromList(List, name="List"):
     print(f"\n--- {name} ---")
-    for key, value in Dict.items():
-        print(f"{key}: {value}")
-    print("---" + "-" * len(name) + "---")
+    for item in List:
+        printfromDict(item, showname=False)
+        print("---" + "-" * len(name) + "---")
 
 
 async def main():
@@ -88,6 +113,13 @@ async def main():
     
     handler.on("clan_data_ready", on_clan_data_ready)
     
+    async def on_clan_members_data_ready(event: ClanMembersDataParsedEvent, printlist=False):
+        print(f"\n🎯 Получены готовые данные об {len(event.data)} участниках клана!")
+        if printlist:
+            printfromList(event.data, "Clan members Data")
+
+    handler.on("clan_members_data_ready", lambda event: on_clan_members_data_ready(event, printlist=False))
+
     async def on_error(event: ErrorEvent):
         print(f"\n❌ Ошибка: {event.data}")
     
@@ -99,6 +131,7 @@ async def main():
         
         # Запрашиваем данные (всё остальное произойдет через события)
         await handler.fetch_clan_data()
+        await handler.fetch_clan_members_data()
         
         # Даем время на обработку событий
         await asyncio.sleep(2)
