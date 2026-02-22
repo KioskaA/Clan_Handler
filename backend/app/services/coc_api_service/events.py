@@ -24,6 +24,16 @@ class ClanRaidLogReceivedEvent(Event):
 class ClanRaidlogParsedEvent(Event):
     pass
 
+class ClanWarLogReceivedEvent(Event):
+    def __init__(self, data, type="cw"):
+        super().__init__(data)
+        self.type = type
+
+class ClanWarLogParsedEvent(Event):
+    def __init__(self, data, type="cw"):
+        super().__init__(data)
+        self.type = type
+
 class ErrorEvent(Event):
     pass
 

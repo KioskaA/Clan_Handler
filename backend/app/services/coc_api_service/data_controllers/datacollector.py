@@ -1,5 +1,5 @@
 import coc
-from coc_api_service.events import EventEmitter, ClanDataReceivedEvent, ErrorEvent, ClanMembersDataReceivedEvent, ClanRaidLogReceivedEvent
+from coc_api_service.events import EventEmitter, ClanDataReceivedEvent, ClanMembersDataReceivedEvent, ClanRaidLogReceivedEvent, ClanWarLogReceivedEvent, ErrorEvent
 
 
 class DataCollector(EventEmitter):
@@ -11,9 +11,9 @@ class DataCollector(EventEmitter):
         self.error_msges = (
             "ERROR> Необходима авторизация!",
             "ERROR> Clah of Clans API находится в режиме обслуживания!",
-            "ERROR> Ошибка сети!"
-            "ERROR> Клана с тегом {clantag} не существует!"
-            "ERROR> У клана с тегом {clantag} приватный вар/рейд-лог!"
+            "ERROR> Ошибка сети!",
+            "ERROR> Клана с тегом {clantag} не существует!",
+            "ERROR> У клана с тегом {clantag} приватный вар/рейд-лог!",
         )
 
         print(f"DataCollector.__init__(): успешная инициализация класса")
@@ -24,7 +24,7 @@ class DataCollector(EventEmitter):
             try:
                 await self.client.login(self.cocAPIlogin, self.cocAPIpassword)
                 self.is_session = True
-                print(f"DataCallector.login(): авторизация прошла успешно")
+                print(f"DataCollector.login(): авторизация прошла успешно")
             except coc.InvalidCredentials as error:
                 print(f"DataCollector.login(): ошибка авторизации: {error}")
                 raise
@@ -111,6 +111,34 @@ class DataCollector(EventEmitter):
             await self.emit("error", ErrorEvent(self.error_msges[4]))
             return None
 
+    async def getWarLog(self, clantag, limit=15, type="cw"):
+        if not self.is_session:
+            print(f"DataCollector.getWarLog(): {self.error_msges[0]}")
+            await self.emit("error", ErrorEvent(self.error_msges[0]))
+            return None
+        try:
+            data = await self.client.get_war_log(clantag, limit=limit)
+            data = list(data)
+            print(f"DataCollector.getWarLog(): Рейдлог клана {clantag} получен")
+            await self.emit("clan_warlog_received", ClanWarLogReceivedEvent(data, type=type))
+            return data
+        except coc.NotFound:
+            print(f"DataCollector.getWarLog(): {self.error_msges[3]}")
+            await self.emit("error", ErrorEvent(self.error_msges[3]))
+            return None
+        except coc.Maintenance:
+            print(f"DataCollector.getWarLog(): {self.error_msges[1]}")
+            await self.emit("error", ErrorEvent(self.error_msges[1]))
+            return None
+        except coc.GatewayError:
+            print(f"DataCollector.getWarLog(): {self.error_msges[2]}")
+            await self.emit("error", ErrorEvent(self.error_msges[2]))
+            return None
+        except coc.PrivateWarLog:
+            print(f"DataCollector.getWarLog(): {self.error_msges[4]}")
+            await self.emit("error", ErrorEvent(self.error_msges[4]))
+            return None
+        
     # ========== ПОИСК ВСЕХ (СПИСКИ) ==========
 
     #async def getLeaguesdata(self):           # ! (search_leagues → List[League]) Дает список(ID, название, иконка) всех лиг

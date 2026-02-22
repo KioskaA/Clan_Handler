@@ -1,4 +1,4 @@
-from coc_api_service.events import EventEmitter, ClanDataParsedEvent, ClanMembersDataParsedEvent, ClanRaidlogParsedEvent, ErrorEvent
+from coc_api_service.events import EventEmitter, ClanDataParsedEvent, ClanMembersDataParsedEvent, ClanRaidlogParsedEvent, ClanWarLogParsedEvent, ErrorEvent
 
 class DataParser(EventEmitter):
         # TODO CWwarlog, CWdata, CWLdata
@@ -32,11 +32,11 @@ class DataParser(EventEmitter):
             clandata["war_losses"] = clan.war_losses
             clandata["public_war_log"] = clan.public_war_log
             clandata["member_count"] = clan.member_count
-            clandata["labels"] = [(label.name, label.badge.medium) for label in clan.labels]
+            clandata["labels"] = [(label.name) for label in clan.labels]
             clandata["members"] = [(member.tag) for member in clan.members]
             clandata["war_league"] = clan.war_league.name
             clandata["capital_league"] = clan.capital_league.name
-            clandata["capital_districts"] = [(district.name, district.hall_level) for district in clan.capital_districts]
+            clandata["capital_districts"] = [{"name": district.name, "hall_level": district.hall_level} for district in clan.capital_districts]
 
             await self.emit("clan_data_parsed", ClanDataParsedEvent(clandata))
             print(f"DataParser.parseClan(): данные клана обработаны")
@@ -64,14 +64,25 @@ class DataParser(EventEmitter):
             return achievements
         
         async def parseTroopslist(trooplist):
+            if not trooplist:
+                return []
+            
             troops = []
-
             for troop in trooplist:
                 troops.append({
                     "name": troop.name,
                     "level": troop.level,
                 })
             return troops
+        
+        def parse_season(season_obj):
+            if season_obj is None:
+                return None
+            return {
+                "id": season_obj.id if hasattr(season_obj, 'id') else None,
+                "trophies": season_obj.trophies if hasattr(season_obj, 'trophies') else None,
+                "rank": season_obj.rank if hasattr(season_obj, 'rank') else None
+            }
         
         async def parseLegendStatistics(legend_statistics):
             if legend_statistics == None:
@@ -86,15 +97,6 @@ class DataParser(EventEmitter):
                     "best_builder_base_season": parse_season(getattr(legend_statistics, 'best_builder_base_season', None)),
                 }
                 return legstat
-        
-        def parse_season(season_obj):
-            if season_obj is None:
-                return None
-            return {
-                "id": season_obj.id if hasattr(season_obj, 'id') else None,
-                "trophies": season_obj.trophies if hasattr(season_obj, 'trophies') else None,
-                "rank": season_obj.rank if hasattr(season_obj, 'rank') else None
-            }
 
         print(f"DataParser.parseClanMembers(): Запуск парсинга списка участников клана")
         try:
@@ -131,7 +133,7 @@ class DataParser(EventEmitter):
                     "super_troops": await parseTroopslist(member.super_troops),
                     "siege_machines": await parseTroopslist(member.siege_machines),
                     "spells": await parseTroopslist(member.spells),
-                    "labels": [(label.name, label.badge.medium) for label in member.labels],
+                    "labels": [(label.name) for label in member.labels],
                     "equipment": await parseTroopslist(member.equipment),
                     "heroes": await parseTroopslist(member.heroes),
                     "pets": await parseTroopslist(member.pets),
@@ -159,7 +161,7 @@ class DataParser(EventEmitter):
                     "bonus_attack_limit": member.bonus_attack_limit,
                     "capital_resources_looted": member.capital_resources_looted,
                     #"attacks": member.attacks,
-                    "attacks": "Будет добавлено после кв",
+                    "attacks": "Будет добавлено после кв", # TODO <<<<<<<
                 })
             return raidmembers
 
@@ -182,9 +184,9 @@ class DataParser(EventEmitter):
                     "total_defensive_loot": log.total_defensive_loot,
                     "members": await parse_RaidMembers(log.members),
                     #"attack_log": log.attack_log,
-                    "attack_log": "Будет добавлено после кв",
+                    "attack_log": "Будет добавлено после кв", # TODO <<<<<<<
                     #"defense_log": log.defense_log,
-                    "defense_log": "Будет добавлено после кв",
+                    "defense_log": "Будет добавлено после кв", # TODO <<<<<<<
                 })
             await self.emit("clan_raidlog_parsed", ClanRaidlogParsedEvent(logs))
             print(f"DataParser.parseRaidLog(): Рейдлог клана обработан")
@@ -192,5 +194,52 @@ class DataParser(EventEmitter):
         except Exception as e:
             error_msg = f"Ошибка при парсинге данных: {e}"
             print(f"DataParser.parseRaidLog(): {error_msg}")
+            await self.emit("error", ErrorEvent(error_msg))
+            return None
+
+    async def parseWarLog(self, warlog, type="cw"):
+        print(f"DataParser.parseWarLog(): Запуск парсинга варлога клана")
+        try:
+            cwlogs = []
+            cwllogs = []
+            for log in warlog:
+                if not log.is_league_entry:
+                    cwlogs.append({
+                        "result": log.result,
+                        "end_time": log.end_time.now,
+                        "team_size": log.team_size,
+                        "clan": log.clan, # TODO <<<<<<<
+                        "opponent": log.opponent, # TODO <<<<<<<
+                        "attacks_per_member": log.attacks_per_member,
+                        "battle_modifier": log.battle_modifier,
+                        "is_league_entry": log.is_league_entry,
+                    })
+                else:
+                    cwllogs.append({
+                        "result": log.result,
+                        "end_time": log.end_time.now,
+                        "team_size": log.team_size,
+                        "clan": log.clan, # TODO <<<<<<<
+                        "opponent": log.opponent, # TODO <<<<<<<
+                        "attacks_per_member": log.attacks_per_member,
+                        "battle_modifier": log.battle_modifier,
+                        "is_league_entry": log.is_league_entry,
+                    })
+            
+            if type == "cw":
+                logs = cwlogs
+                await self.emit("clan_warlog_parsed", ClanWarLogParsedEvent(logs, type=type))
+            elif type == "cwl":
+                logs = cwllogs
+                await self.emit("clan_warlog_parsed", ClanWarLogParsedEvent(logs, type=type))
+            else:
+                print(f"DataParser.parseWarLog(): Параметр type некорректен: {type}")
+                return None
+
+            print(f"DataParser.parseWarLog(): Рейдлог клана обработан")
+            return logs
+        except Exception as e:
+            error_msg = f"Ошибка при парсинге данных: {e}"
+            print(f"DataParser.parseWarLog(): {error_msg}")
             await self.emit("error", ErrorEvent(error_msg))
             return None

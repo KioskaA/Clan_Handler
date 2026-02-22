@@ -12,6 +12,7 @@ from coc_api_service.events import (
                                     ClanDataReceivedEvent, ClanDataParsedEvent,
                                     ClanMembersDataReceivedEvent, ClanMembersDataParsedEvent,
                                     ClanRaidLogReceivedEvent, ClanRaidlogParsedEvent,
+                                    ClanWarLogReceivedEvent, ClanWarLogParsedEvent,
                                     ErrorEvent
                                 )
 
@@ -75,6 +76,20 @@ class CoCAPIHandler(EventEmitter):
 
         self.data_parser.on("clan_raidlog_parsed", handle_clan_raidlog_parsed)
 
+        # *---* Варлог *---*
+
+        async def handle_clan_warlog_received(event: ClanWarLogReceivedEvent):
+            print("CoCAPIHandler: Получен варлог клана, начинаю парсинг")
+            await self.data_parser.parseWarLog(event.data, type=event.type)
+
+        self.data_collector.on("clan_warlog_received", handle_clan_warlog_received)
+
+        async def handle_clan_warlog_parsed(event: ClanWarLogParsedEvent):
+            print("CoCAPIHandler: Варлог клана распарсен")
+            await self.emit("clan_warlog_ready", event)
+
+        self.data_parser.on("clan_warlog_parsed", handle_clan_warlog_parsed)
+
         # *---* Обработка ошибок коллектора *---*
         async def handle_collector_error(event: ErrorEvent):
             print(f"CoCAPIHandler: Получена ошибка от коллектора: {event.data}")
@@ -104,6 +119,10 @@ class CoCAPIHandler(EventEmitter):
     async def fetch_clan_raidlog(self, clantag, limit=5):
         print("CoCAPIHandler: Запрашиваю рейдлог клана")
         await self.data_collector.getRaidLog(clantag, limit=limit)
+
+    async def fetch_clan_warlog(self, clantag, limit=15, type="cw"):
+        print("CoCAPIHandler: Запрашиваю варлог клана")
+        await self.data_collector.getWarLog(clantag, limit=limit, type=type)
 
     async def close(self):
         """Закрытие соединения"""
@@ -166,6 +185,15 @@ async def main():
 
     handler.on("clan_raidlog_ready", on_clan_raidlog_ready)
 
+    async def on_clan_warlog_ready(event:ClanWarLogParsedEvent):
+        print(f"\n🎯 Получен готовый варлог клана!")
+        if event.type == "cw":
+            printfromList(event.data, "CW Warlog")
+        else:
+            printfromList(event.data, "CWL Warlog")
+
+    handler.on("clan_warlog_ready", on_clan_warlog_ready)
+
     async def on_error(event: ErrorEvent):
         print(f"\n❌ Ошибка: {event.data}")
     
@@ -176,8 +204,10 @@ async def main():
         
         # Запрашиваем данные
         #await handler.fetch_clan_data(clantag=CLANTAG)
-        await handler.fetch_clan_members_data(clantag=CLANTAG)
+        #await handler.fetch_clan_members_data(clantag=CLANTAG)
         #await handler.fetch_clan_raidlog(clantag=CLANTAG, limit=1)
+        await handler.fetch_clan_warlog(clantag=CLANTAG, limit=15, type="cwl")
+        await handler.fetch_clan_warlog(clantag=CLANTAG, limit=15, type="cw")
         
         await asyncio.sleep(2)
         
