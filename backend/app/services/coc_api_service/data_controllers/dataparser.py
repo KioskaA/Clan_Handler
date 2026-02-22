@@ -1,7 +1,7 @@
 from coc_api_service.events import EventEmitter, ClanDataParsedEvent, ClanMembersDataParsedEvent, ClanRaidlogParsedEvent, ErrorEvent
 
 class DataParser(EventEmitter):
-        # TODO CWwarlog, Raidwarlog, CWdata, CWLdata
+        # TODO CWwarlog, CWdata, CWLdata
     def __init__(self):
         super().__init__()
         print("DataParser.__init__(): успешная инициализация класса")
@@ -47,8 +47,55 @@ class DataParser(EventEmitter):
             print(f"DataParser.parseClan(): {error_msg}")
             await self.emit("error", ErrorEvent(error_msg))
             return None
-        
+
+
     async def parseClanMembers(self, memberslist):
+
+        async def parseAchievementlist(achievementlist):
+            achievements = []
+            for achievement in achievementlist:
+                achievements.append({
+                    "name": achievement.name,
+                    "stars": achievement.stars,
+                    "value": achievement.value,
+                    "target": achievement.target,
+                    # "village": str(achievement.village), # str: Either home or builderBase # Хз, возможно понадобится когда-нибудь
+                })
+            return achievements
+        
+        async def parseTroopslist(trooplist):
+            troops = []
+
+            for troop in trooplist:
+                troops.append({
+                    "name": troop.name,
+                    "level": troop.level,
+                })
+            return troops
+        
+        async def parseLegendStatistics(legend_statistics):
+            if legend_statistics == None:
+                return None
+            else:
+                legstat = {
+                    "legend_trophies": getattr(legend_statistics, 'legend_trophies', 0),
+                    "current_season": parse_season(getattr(legend_statistics, 'current_season', None)),
+                    "previous_season": parse_season(getattr(legend_statistics, 'previous_season', None)),
+                    "best_season": parse_season(getattr(legend_statistics, 'best_season', None)),
+                    "previous_builder_base_season": parse_season(getattr(legend_statistics, 'previous_builder_base_season', None)),
+                    "best_builder_base_season": parse_season(getattr(legend_statistics, 'best_builder_base_season', None)),
+                }
+                return legstat
+        
+        def parse_season(season_obj):
+            if season_obj is None:
+                return None
+            return {
+                "id": season_obj.id if hasattr(season_obj, 'id') else None,
+                "trophies": season_obj.trophies if hasattr(season_obj, 'trophies') else None,
+                "rank": season_obj.rank if hasattr(season_obj, 'rank') else None
+            }
+
         print(f"DataParser.parseClanMembers(): Запуск парсинга списка участников клана")
         try:
             members = []
@@ -56,11 +103,11 @@ class DataParser(EventEmitter):
                 members.append({
                     "tag": member.tag,
                     "name": member.name,
-                    "role": member.role,
+                    "role": member.role.in_game_name,
                     "town_hall": member.town_hall,
                     "exp_level": member.exp_level,
-                    "league": member.league,
-                    "builder_base_league": member.builder_base_league,
+                    "league": member.league.name,
+                    "builder_base_league": member.builder_base_league.name,
                     "trophies": member.trophies,
                     "builder_base_trophies": member.builder_base_trophies,
                     "clan_rank": member.clan_rank,
@@ -76,18 +123,18 @@ class DataParser(EventEmitter):
                     "builder_hall": member.builder_hall,
                     "best_builder_base_trophies": member.best_builder_base_trophies,
                     "clan_capital_contributions": member.clan_capital_contributions,
-                    "legend_statistics": member.legend_statistics,
+                    "legend_statistics": await parseLegendStatistics(member.legend_statistics),
                     "war_opted_in": member.war_opted_in,
-                    "achievements": member.achievements,
-                    "builder_troops": member.builder_troops,
-                    "equipment": member.equipment,
-                    "heroes": member.heroes,
-                    "home_troops": member.home_troops,
-                    "labels": member.labels,
-                    "pets": member.pets,
-                    "siege_machines": member.siege_machines,
-                    "spells": member.spells,
-                    "super_troops": member.super_troops
+                    "achievements": await parseAchievementlist(member.achievements),
+                    "builder_troops": await parseTroopslist(member.builder_troops),
+                    "home_troops": await parseTroopslist(member.home_troops),
+                    "super_troops": await parseTroopslist(member.super_troops),
+                    "siege_machines": await parseTroopslist(member.siege_machines),
+                    "spells": await parseTroopslist(member.spells),
+                    "labels": [(label.name, label.badge.medium) for label in member.labels],
+                    "equipment": await parseTroopslist(member.equipment),
+                    "heroes": await parseTroopslist(member.heroes),
+                    "pets": await parseTroopslist(member.pets),
                 })
             await self.emit("clan_members_data_parsed", ClanMembersDataParsedEvent(members))
             print(f"DataParser.parseClanMembers(): список участников клана обработан")
@@ -97,6 +144,7 @@ class DataParser(EventEmitter):
             print(f"DataParser.parseClanMembers(): {error_msg}")
             await self.emit("error", ErrorEvent(error_msg))
             return None
+
 
     async def parseRaidLog(self, raidlog):
 

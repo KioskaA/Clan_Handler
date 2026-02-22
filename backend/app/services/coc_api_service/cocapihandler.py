@@ -140,25 +140,6 @@ def printfromList(List, name="List", amount: str | int = "full", showname = True
         printfromDict(item, showname=False)
         print("---" + "-" * len(name) + "---")
 
-
-    #if amount > len(List):
-    #    print(f"CoCAPIHandler.printfromList(): Параметр amount должен быть <= длины списка или 'full', получено: {amount}")
-    #    return None
-    #if showname:
-    #    print(f"\n--- {name} ---")
-    #
-    #if amount == "full":
-    #    for item in List:
-    #        printfromDict(item, showname=False)
-    #        print("---" + "-" * len(name) + "---")
-    #else:
-    #    i = 0
-    #    while i <= int(amount):
-    #        for item in List:
-    #            printfromDict(item, showname=False)
-    #            print("---" + "-" * len(name) + "---")
-    #            i += 1
-
 async def main():
     # Создаем обработчик
     handler = CoCAPIHandler(LOGIN, PASSWORD)
@@ -177,7 +158,7 @@ async def main():
         else:
             printfromList(event.data, "Clan members Data", amount=amount)
 
-    handler.on("clan_members_data_ready", lambda event: on_clan_members_data_ready(event, amount=1)) # ! <<<<< МЕНЯТЬ КОЛИЧЕСТВО ВЫВОДИМЫХ УЧАСТНИКОВ КЛАНА ЗДЕСЬ!!!!
+    handler.on("clan_members_data_ready", lambda event: on_clan_members_data_ready(event, amount="full")) # ! <<<<< МЕНЯТЬ КОЛИЧЕСТВО ВЫВОДИМЫХ УЧАСТНИКОВ КЛАНА ЗДЕСЬ!!!!
 
     async def on_clan_raidlog_ready(event:ClanRaidlogParsedEvent):
         print(f"\n🎯 Получен готовый рейдлог клана!")
