@@ -18,6 +18,12 @@ class ClanMembersDataReceivedEvent(Event):
 class ClanMembersDataParsedEvent(Event):
     pass
 
+class ClanRaidLogReceivedEvent(Event):
+    pass
+
+class ClanRaidlogParsedEvent(Event):
+    pass
+
 class ErrorEvent(Event):
     pass
 

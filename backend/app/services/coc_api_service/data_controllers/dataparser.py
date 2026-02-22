@@ -1,7 +1,7 @@
-from coc_api_service.events import EventEmitter, ClanDataParsedEvent, ClanMembersDataParsedEvent, ErrorEvent
+from coc_api_service.events import EventEmitter, ClanDataParsedEvent, ClanMembersDataParsedEvent, ClanRaidlogParsedEvent, ErrorEvent
 
 class DataParser(EventEmitter):
-        # TODO CWwarlog, Raidwarlog, CWdata, CWLdata, Playerdata
+        # TODO CWwarlog, Raidwarlog, CWdata, CWLdata
     def __init__(self):
         super().__init__()
         print("DataParser.__init__(): успешная инициализация класса")
@@ -89,11 +89,60 @@ class DataParser(EventEmitter):
                     "spells": member.spells,
                     "super_troops": member.super_troops
                 })
-
             await self.emit("clan_members_data_parsed", ClanMembersDataParsedEvent(members))
             print(f"DataParser.parseClanMembers(): список участников клана обработан")
+            return members
         except Exception as e:
             error_msg = f"Ошибка при парсинге данных: {e}"
-            print(f"DataParser.parseClan(): {error_msg}")
+            print(f"DataParser.parseClanMembers(): {error_msg}")
+            await self.emit("error", ErrorEvent(error_msg))
+            return None
+
+    async def parseRaidLog(self, raidlog):
+
+        async def parse_RaidMembers(memberslist):
+            raidmembers = []
+            for member in memberslist:
+                raidmembers.append({
+                    "tag": member.tag,
+                    "name": member.name,
+                    "attack_count": member.attack_count,
+                    "attack_limit": member.attack_limit,
+                    "bonus_attack_limit": member.bonus_attack_limit,
+                    "capital_resources_looted": member.capital_resources_looted,
+                    #"attacks": member.attacks,
+                    "attacks": "Будет добавлено после кв",
+                })
+            return raidmembers
+
+        print(f"DataParser.parseRaidLog(): Запуск парсинга рейдлога клана")
+        try:
+            logs = []
+            for log in raidlog:
+                logs.append({
+                    "state": log.state,
+                    "start_time": log.start_time.now,
+                    "end_time": log.end_time.now,
+                    "total_loot": log.total_loot,
+                    "completed_raid_count": log.completed_raid_count,
+                    "attack_count": log.attack_count,
+                    "destroyed_district_count": log.destroyed_district_count,
+                    "offensive_reward": log.offensive_reward,
+                    "defensive_reward": log.defensive_reward,
+                    "defense_attack_count": log.defense_attack_count,
+                    "defensive_destroyed_district_count": log.defensive_destroyed_district_count,
+                    "total_defensive_loot": log.total_defensive_loot,
+                    "members": await parse_RaidMembers(log.members),
+                    #"attack_log": log.attack_log,
+                    "attack_log": "Будет добавлено после кв",
+                    #"defense_log": log.defense_log,
+                    "defense_log": "Будет добавлено после кв",
+                })
+            await self.emit("clan_raidlog_parsed", ClanRaidlogParsedEvent(logs))
+            print(f"DataParser.parseRaidLog(): Рейдлог клана обработан")
+            return logs
+        except Exception as e:
+            error_msg = f"Ошибка при парсинге данных: {e}"
+            print(f"DataParser.parseRaidLog(): {error_msg}")
             await self.emit("error", ErrorEvent(error_msg))
             return None
